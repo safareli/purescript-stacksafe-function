@@ -4,8 +4,8 @@ import Data.Newtype (class Newtype)
 import Control.Semigroupoid (class Semigroupoid)
 import Control.Category (class Category, id)
 
--- | A newtype over normal function (->) , which guarantes stack safety.
--- | It's safe to be used in FFI code, as representation of of underlying
+-- | A newtype over normal function (->), which guarantees stack safety.
+-- | It's safe to be used in FFI code, as representation of underlying
 -- | function is not changed.
 newtype Func a b = Func (a -> b)
 
