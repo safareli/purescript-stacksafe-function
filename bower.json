@@ -1,0 +1,25 @@
+{
+  "name": "purescript-stacksafe-function",
+  "description": "Newtype over function such that composition is stack safe",
+  "homepage": "https://github.com/safareli/purescript-stacksafe-function",
+  "license": "MIT",
+  "authors": [
+    "Irakli Safareli <I.safareli@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/safareli/purescript-stacksafe-function.git"
+  },
+  "ignore": [
+    "*",
+    "!src/**/*"
+  ],
+  "dependencies": {
+    "purescript-prelude": "^3.0.0",
+    "purescript-newtype": "^2.0.0"
+  },
+  "devDependencies": {
+    "purescript-assert": "^3.0.0",
+    "purescript-strongcheck-laws": "^2.0.0"
+  }
+}
