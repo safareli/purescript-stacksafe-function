@@ -1,7 +1,7 @@
 # purescript-stacksafe-function
 
-[![Latest release](http://img.shields.io/github/release/slamdata/purescript-stacksafe-function.svg)](https://github.com/slamdata/purescript-stacksafe-function/releases)
-[![Build status](https://travis-ci.org/slamdata/purescript-stacksafe-function.svg?branch=master)](https://travis-ci.org/slamdata/purescript-stacksafe-function)
+[![Latest release](http://img.shields.io/github/release/safareli/purescript-stacksafe-function.svg)](https://github.com/safareli/purescript-stacksafe-function/releases)
+[![Build status](https://travis-ci.org/safareli/purescript-stacksafe-function.svg?branch=master)](https://travis-ci.org/safareli/purescript-stacksafe-function)
 
 A newtype over normal function (->) , which guarantes stack safety. It's safe to be used in FFI code, as representation of of underlying function is not changed.
 
