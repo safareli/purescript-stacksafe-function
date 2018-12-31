@@ -1,7 +1,7 @@
 module StackSafe.Function where
 
 import Control.Semigroupoid (class Semigroupoid)
-import Control.Category (class Category, identity)
+import Control.Category (class Category)
 
 -- | NOTE: Stack safety applies to composition only! It does not make a
 -- | function, that is not stacksafe, safe.
