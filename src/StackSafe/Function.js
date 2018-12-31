@@ -1,33 +1,45 @@
 "use strict";
 
-// In spirit of:
-// - https://medium.com/@safareli/stack-safe-function-composition-85d61feee37e
-// - https://github.com/purescript/purescript-eff/pull/31
-var runComposition = function(composition, x) {
-  var root = composition;
-  var val = x;
-  var stack = [];
-  for (;;) {
-    if (root._0 !== undefined){
-      stack.push(root._1);
-      root = root._0;
-    } else {
-      val = root(val);
-      if (stack.length === 0) {
-        return val;
-      }
-      root = stack.shift();
-    }
-  }
+exports.identityImpl = [];
+
+exports.fromFunction = function (f) {
+    return [f];
 };
 
-exports.functionCompose = function(f) {
-  return function(g) {
-    var res = function composition(x) {
-      return runComposition(composition, x);
+exports.composeFunc = function(f) {
+    return function(g) {
+        return [g, f];
     };
-    res._0 = g;
-    res._1 = f;
-    return res;
-  };
+};
+
+exports.toFunction = function (fs) {
+    return function (x) {
+        var stack = fs.slice(),
+            queue = [],
+            i, current, length;
+
+        while (true) {
+            if (stack.length == 0) {
+                break;
+            }
+
+            current = stack.pop();
+
+            if (typeof current == 'function') {
+                queue.push(current);
+                continue;
+            }
+
+            length = current.length;
+            for (i = 0; i < length; i++) {
+                stack.push(current[i]);
+            }
+        }
+
+        for (i = queue.length - 1; i >= 0; i--) {
+            x = queue[i](x);
+        }
+
+        return x;
+    };
 };

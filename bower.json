@@ -15,11 +15,9 @@
     "!src/**/*"
   ],
   "dependencies": {
-    "purescript-prelude": "^3.0.0",
-    "purescript-newtype": "^2.0.0"
+    "purescript-prelude": "^4.0.0"
   },
   "devDependencies": {
-    "purescript-assert": "^3.0.0",
-    "purescript-strongcheck-laws": "^2.0.0"
+    "purescript-assert": "^4.0.0"
   }
 }
