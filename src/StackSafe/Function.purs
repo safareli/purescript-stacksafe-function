@@ -1,5 +1,5 @@
 module StackSafe.Function 
-  (Func(..)
+  ( Func(..)
   , run
   , type (-#>)
   , (#$)
@@ -10,11 +10,11 @@ import Control.Semigroupoid (class Semigroupoid)
 import Control.Category (class Category, identity)
 
 -- | A newtype over normal function (->), which guarantees stack safety.
--- | It's safe to be used in FFI code, as representation of underlying
+-- | It's safe for use in FFI code, as representation of underlying
 -- | function is not changed.
 -- |
 -- | NOTE: Stack safety applies to composition only! It does not make a
--- | function, that is not stacksafe, safe.
+-- | function, that is not stack-safe, safe.
 newtype Func a b = Func (a -> b)
 
 infixr 4 type Func as -#>

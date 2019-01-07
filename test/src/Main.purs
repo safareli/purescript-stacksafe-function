@@ -5,6 +5,12 @@ import StackSafe.Function (type (-#>), Func(..), (#$))
 import Test.Assert (assert', assertEqual, assertThrows')
 import Effect.Console (log)
 import Effect (Effect)
+import Data.Foldable (all)
+import Data.Enum (class BoundedEnum, enumFromTo)
+import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary, class Coarbitrary, coarbitrary) 
+import Test.QuickCheck.Laws (checkLaws)
+import Test.QuickCheck.Laws.Control as Control
+import Type.Proxy (Proxy3(..))
 
 
 main :: Effect Unit
@@ -12,6 +18,7 @@ main = do
   checkIdentity
   checkAssociativity
   checkEquivalenceToFunction
+  laws
   checkStackSafety
 
 addA :: String -> String
@@ -91,3 +98,28 @@ checkStackSafety = do
     composeGo f acc n = if n == 0
                         then acc
                         else composeGo f (compose acc f) (n - 1)
+
+laws :: Effect Unit
+laws =
+  checkLaws "Func" do
+    Control.checkSemigroupoid prx3Func
+    Control.checkCategory prx3Func
+  where
+  prx3Func = Proxy3 :: Proxy3 TestFunc
+
+newtype TestFunc a b = TestFunc (Func a b)
+
+derive newtype instance semigroupoidTestFunc :: Semigroupoid TestFunc
+derive newtype instance categoryTestFunc :: Category TestFunc
+
+instance eqTestFunc :: (BoundedEnum i, Eq o) => Eq (TestFunc i o) where
+  eq (TestFunc (Func f)) (TestFunc (Func g)) = all (\v -> f v == g v) $ asArr $ enumFromTo bottom top
+    where
+      asArr :: Array ~> Array
+      asArr = identity
+
+instance coarbitraryTestFunc :: (Arbitrary a, Coarbitrary b) => Coarbitrary (TestFunc a b) where
+  coarbitrary (TestFunc (Func f)) = coarbitrary f
+
+instance arbitraryTestFunc :: (Coarbitrary a, Arbitrary b) => Arbitrary (TestFunc a b) where
+  arbitrary = arbitrary <#> Func >>> TestFunc
