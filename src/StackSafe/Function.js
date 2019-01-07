@@ -1,40 +1,33 @@
 "use strict";
 
-exports.identityImpl = [];
-
-exports.fromFunction = function (f) {
-  return [f];
-};
-
-exports.composeFunc = function(f) {
-  return function(g) {
-    return [f, g];
-  };
-};
-
-exports.toFunction = function (fs) {
-  return function (x) {
-    var stack = fs.slice(),
-      r = x, i, current, length;
-
-    for (;;) {
+// In spirit of:
+// - https://medium.com/@safareli/stack-safe-function-composition-85d61feee37e
+// - https://github.com/purescript/purescript-eff/pull/31
+var runComposition = function(composition, x) {
+  var root = composition;
+  var val = x;
+  var stack = [];
+  for (;;) {
+    if (root._0 !== undefined){
+      stack.push(root._1);
+      root = root._0;
+    } else {
+      val = root(val);
       if (stack.length === 0) {
-        break;
+        return val;
       }
-
-      current = stack.pop();
-
-      if (typeof current === "function") {
-        r = current(r);
-        continue;
-      }
-
-      length = current.length;
-      for (i = 0; i < length; i++) {
-        stack.push(current[i]);
-      }
+      root = stack.pop();
     }
+  }
+};
 
-    return r;
+exports.functionCompose = function(f) {
+  return function(g) {
+    var res = function composition(x) {
+      return runComposition(composition, x);
+    };
+    res._0 = g;
+    res._1 = f;
+    return res;
   };
 };

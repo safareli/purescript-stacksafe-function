@@ -1,22 +1,35 @@
-module StackSafe.Function where
+module StackSafe.Function 
+  (Func(..)
+  , run
+  , type (-#>)
+  , (#$)
+  )where
 
+import Data.Newtype (class Newtype)
 import Control.Semigroupoid (class Semigroupoid)
-import Control.Category (class Category)
+import Control.Category (class Category, identity)
 
+-- | A newtype over normal function (->), which guarantees stack safety.
+-- | It's safe to be used in FFI code, as representation of underlying
+-- | function is not changed.
+-- |
 -- | NOTE: Stack safety applies to composition only! It does not make a
 -- | function, that is not stacksafe, safe.
-foreign import data Func :: Type -> Type -> Type
+newtype Func a b = Func (a -> b)
+
 infixr 4 type Func as -#>
 
-foreign import fromFunction :: forall a b. (a -> b) -> (a -#> b)
-foreign import composeFunc :: forall a b c. (b -#> c) -> (a -#> b) -> (a -#> c)
-foreign import toFunction :: forall a b. (a -#> b) -> (a -> b)
-foreign import identityImpl :: forall a. (a -#> a)
+derive instance newtypeFunc :: Newtype (Func a b) _
 
-infixr 0 toFunction as #$
+run :: forall a b. Func a b -> a -> b
+run (Func f) = f
+
+infixr 0 run as #$
 
 instance semigroupoidFn :: Semigroupoid Func where
-  compose = composeFunc
+  compose (Func f) (Func g) = Func (functionCompose f g)
 
 instance categoryFn :: Category Func where
-  identity = identityImpl
+  identity = Func identity
+
+foreign import functionCompose :: forall b c d. (c -> d) -> (b -> c) -> (b -> d)

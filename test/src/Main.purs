@@ -1,11 +1,13 @@
 module Test.Main where
 
 import Prelude
-import StackSafe.Function
-import Test.Assert
+import StackSafe.Function (type (-#>), Func(..), (#$))
+import Test.Assert (assert', assertEqual, assertThrows')
 import Effect.Console (log)
+import Effect (Effect)
 
 
+main :: Effect Unit
 main = do
   checkIdentity
   checkAssociativity
@@ -25,17 +27,18 @@ addD :: String -> String
 addD = (_ <> "d")
 
 addA' :: String -#> String
-addA' = fromFunction addA
+addA' = Func addA
 
 addB' :: String -#> String
-addB' = fromFunction addB
+addB' = Func addB
 
 addC' :: String -#> String
-addC' = fromFunction addC
+addC' = Func addC
 
 addD' :: String -#> String
-addD' = fromFunction addD
+addD' = Func addD
 
+checkIdentity :: Effect Unit
 checkIdentity = do
   log "checking identity"
   assertEqual { expected: identity $ ""
@@ -47,10 +50,13 @@ checkIdentity = do
   assertEqual { expected: identity <<< addA $ ""
               , actual: identity <<< addA' #$ "" }
 
+checkAssociativity :: Effect Unit
 checkAssociativity = do
+  log "checking associativity"
   assertEqual { expected: (addA' <<< addB') <<< addC' #$ ""
               , actual:   addA' <<< (addB' <<< addC') #$ "" }
 
+checkEquivalenceToFunction :: Effect Unit
 checkEquivalenceToFunction = do
   log "checking that -#> is equivalent to ->"
   assertEqual { expected: (addA  <<< addB ) <<< (addC  <<< addD ) $ ""
@@ -70,6 +76,7 @@ checkEquivalenceToFunction = do
   assertEqual { expected: addAB  <<< addAB  <<< addAB   $ ""
               , actual:   addAB' <<< addAB' <<< addAB' #$ "" }
 
+checkStackSafety :: Effect Unit
 checkStackSafety = do
   log "checking stack safety (this may take some time)"
   let depth = 1000000
@@ -78,7 +85,7 @@ checkStackSafety = do
     (\_ -> composeGo (_ + 1) identity depth $ 0)
   assert'
     "composition of -#> is stack safe"
-    (depth == (composeGo (fromFunction (_ + 1)) identity depth #$ 0))
+    (depth == (composeGo (Func (_ + 1)) identity depth #$ 0))
   where
     composeGo :: forall a cat. Category cat => (cat a a) -> (cat a a) -> Int -> cat a a
     composeGo f acc n = if n == 0
