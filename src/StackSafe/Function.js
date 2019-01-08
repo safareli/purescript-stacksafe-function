@@ -16,7 +16,7 @@ var runComposition = function(composition, x) {
       if (stack.length === 0) {
         return val;
       }
-      root = stack.shift();
+      root = stack.pop();
     }
   }
 };

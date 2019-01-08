@@ -1,56 +1,125 @@
 module Test.Main where
 
 import Prelude
+import StackSafe.Function (type (-#>), Func(..), (#$))
+import Test.Assert (assert', assertEqual, assertThrows')
+import Effect.Console (log)
+import Effect (Effect)
+import Data.Foldable (all)
+import Data.Enum (class BoundedEnum, enumFromTo)
+import Test.QuickCheck.Arbitrary (class Arbitrary, arbitrary, class Coarbitrary, coarbitrary) 
+import Test.QuickCheck.Laws (checkLaws)
+import Test.QuickCheck.Laws.Control as Control
+import Type.Proxy (Proxy3(..))
 
-import StackSafe.Function (Func(..), run)
-import Control.Monad.Eff (Eff)
-import Test.Assert (ASSERT, assert')
-import Test.Laws (laws)
-import Test.StrongCheck.Laws (SC)
 
-main :: SC (assert :: ASSERT) Unit
+main :: Effect Unit
 main = do
-  testId
-  testAssociativity
+  checkIdentity
+  checkAssociativity
+  checkEquivalenceToFunction
   laws
-  stackSafety
+  checkStackSafety
 
+addA :: String -> String
+addA = (_ <> "a")
 
-plus10 :: Func Int Int
-plus10 = Func (_ + 10)
+addB :: String -> String
+addB = (_ <> "b")
 
-plus20 :: Func Int Int
-plus20 = Func (_ + 20)
+addC :: String -> String
+addC = (_ <> "c")
 
-plus40 :: Func Int Int
-plus40 = Func (_ + 40)
+addD :: String -> String
+addD = (_ <> "d")
 
-plus80 :: Func Int Int
-plus80 = Func (_ + 80)
+addA' :: String -#> String
+addA' = Func addA
 
-testId :: forall eff. Eff (assert :: ASSERT |eff) Unit
-testId = do
-  assert' "80 + 0" ((plus80 >>> id) `run` 0 == 80 + 0)
-  assert' "10 + 0" ((plus10 >>> id) `run` 0 == 10 + 0)
-  assert' "10 + 0" ((plus10 >>> id) `run` 0 == 10 + 0)
-  assert' "0 + 80" ((id >>> plus80) `run` 0 == 0 + 80)
-  assert' "0 + 10" ((id >>> plus10) `run` 0 == 0 + 10)
-  assert' "0 + 10" ((id >>> plus10) `run` 0 == 0 + 10)
+addB' :: String -#> String
+addB' = Func addB
 
-testAssociativity :: forall eff. Eff (assert :: ASSERT |eff) Unit
-testAssociativity = do
-  assert' "(10 + 80) + 40" (((plus10 >>> plus80) >>> plus40) `run` 0 == (10 + 80) + 40)
-  assert' "(20 + 10) + 40" (((plus20 >>> plus10) >>> plus40) `run` 0 == (20 + 10) + 40)
-  assert' "(40 + 10) + 20" (((plus40 >>> plus10) >>> plus20) `run` 0 == (40 + 10) + 20)
-  assert' "10 + (80 + 40)" ((plus10 >>> (plus80 >>> plus40)) `run` 0 == 10 + (80 + 40))
-  assert' "20 + (10 + 40)" ((plus20 >>> (plus10 >>> plus40)) `run` 0 == 20 + (10 + 40))
-  assert' "40 + (10 + 20)" ((plus40 >>> (plus10 >>> plus20)) `run` 0 == 40 + (10 + 20))
+addC' :: String -#> String
+addC' = Func addC
 
-stackSafety :: forall eff. Eff (assert :: ASSERT |eff) Unit
-stackSafety =
+addD' :: String -#> String
+addD' = Func addD
+
+checkIdentity :: Effect Unit
+checkIdentity = do
+  log "checking identity"
+  assertEqual { expected: identity $ ""
+              , actual: identity #$ "" }
+  log "checking right identity"
+  assertEqual { expected: addA <<< identity $ ""
+              , actual: addA' <<< identity #$ "" }
+  log "checking left identity"
+  assertEqual { expected: identity <<< addA $ ""
+              , actual: identity <<< addA' #$ "" }
+
+checkAssociativity :: Effect Unit
+checkAssociativity = do
+  log "checking associativity"
+  assertEqual { expected: (addA' <<< addB') <<< addC' #$ ""
+              , actual:   addA' <<< (addB' <<< addC') #$ "" }
+
+checkEquivalenceToFunction :: Effect Unit
+checkEquivalenceToFunction = do
+  log "checking that -#> is equivalent to ->"
+  assertEqual { expected: (addA  <<< addB ) <<< (addC  <<< addD ) $ ""
+              , actual:   (addA' <<< addB') <<< (addC' <<< addD') #$ "" }
+
+  assertEqual { expected: addA  <<< (addB  <<< addC ) <<< addD   $ ""
+              , actual:   addA' <<< (addB' <<< addC') <<< addD' #$ "" }
+
+  assertEqual { expected: ((addA  <<< addB ) <<< addC ) <<< addD   $ ""
+              , actual:   ((addA' <<< addB') <<< addC') <<< addD' #$ "" }
+
+  assertEqual { expected: addA  <<< ((addB  <<< addC ) <<< addD )  $ ""
+              , actual:   addA' <<< ((addB' <<< addC') <<< addD') #$ "" }
+
+  let addAB  = addA  <<< addB
+      addAB' = addA' <<< addB'
+  assertEqual { expected: addAB  <<< addAB  <<< addAB   $ ""
+              , actual:   addAB' <<< addAB' <<< addAB' #$ "" }
+
+checkStackSafety :: Effect Unit
+checkStackSafety = do
+  log "checking stack safety (this may take some time)"
+  let depth = 1000000
+  assertThrows'
+    "function composition is not stack safe"
+    (\_ -> composeGo (_ + 1) identity depth $ 0)
   assert'
-    "is stack safe and correct"
-    (composeGo (Func (_ + 1)) id 0 `run` 0 == 100000)
+    "composition of -#> is stack safe"
+    (depth == (composeGo (Func (_ + 1)) identity depth #$ 0))
+  where
+    composeGo :: forall a cat. Category cat => (cat a a) -> (cat a a) -> Int -> cat a a
+    composeGo f acc n = if n == 0
+                        then acc
+                        else composeGo f (compose acc f) (n - 1)
 
-composeGo :: forall a. Func a a -> Func a a -> Int -> Func a a
-composeGo f acc n = if n == 100000 then acc else composeGo f (compose acc f) (n + 1)
+laws :: Effect Unit
+laws =
+  checkLaws "Func" do
+    Control.checkSemigroupoid prx3Func
+    Control.checkCategory prx3Func
+  where
+  prx3Func = Proxy3 :: Proxy3 TestFunc
+
+newtype TestFunc a b = TestFunc (Func a b)
+
+derive newtype instance semigroupoidTestFunc :: Semigroupoid TestFunc
+derive newtype instance categoryTestFunc :: Category TestFunc
+
+instance eqTestFunc :: (BoundedEnum i, Eq o) => Eq (TestFunc i o) where
+  eq (TestFunc (Func f)) (TestFunc (Func g)) = all (\v -> f v == g v) $ asArr $ enumFromTo bottom top
+    where
+      asArr :: Array ~> Array
+      asArr = identity
+
+instance coarbitraryTestFunc :: (Arbitrary a, Coarbitrary b) => Coarbitrary (TestFunc a b) where
+  coarbitrary (TestFunc (Func f)) = coarbitrary f
+
+instance arbitraryTestFunc :: (Coarbitrary a, Arbitrary b) => Arbitrary (TestFunc a b) where
+  arbitrary = arbitrary <#> Func >>> TestFunc
